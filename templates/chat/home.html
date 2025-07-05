@@ -1,0 +1,176 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ana Sayfa - Sohbet Uygulaması</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div class="main-container">
+        <header class="top-header p-3 d-flex justify-content-between align-items-center">
+            <button class="btn btn-primary d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="h5 mb-0">{{ user.username }}</h1>
+            <div class="d-flex align-items-center">
+                <form action="{% url 'logout' %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-sign-out-alt me-1"></i>Çıkış Yap
+                    </button>
+                </form>
+            </div>
+        </header>
+
+        <div class="content-area row g-0">
+            <aside class="col-lg-3 col-md-4 sidebar d-none d-md-flex flex-column">
+                <nav class="nav nav-pills flex-column mb-auto">
+                    <button class="nav-link active text-start mb-2" data-bs-toggle="tab" data-bs-target="#dm-section">
+                        <i class="fas fa-comment-dots fa-fw me-2"></i> DM'ler
+                    </button>
+                    <button class="nav-link text-start" data-bs-toggle="tab" data-bs-target="#channels-section">
+                        <i class="fas fa-users fa-fw me-2"></i> Kanallar
+                    </button>
+                </nav>
+            </aside>
+
+            <div class="offcanvas offcanvas-start d-md-none" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel">
+                <div class="offcanvas-header">
+                    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                </div>
+                <div class="offcanvas-body d-flex flex-column">
+                    <nav class="nav nav-pills flex-column mb-auto">
+                        <button class="nav-link active text-start mb-2" data-bs-toggle="tab" data-bs-target="#dm-section" data-bs-dismiss="offcanvas">
+                            <i class="fas fa-comment-dots fa-fw me-2"></i> DM'ler
+                        </button>
+                        <button class="nav-link text-start" data-bs-toggle="tab" data-bs-target="#channels-section" data-bs-dismiss="offcanvas">
+                            <i class="fas fa-users fa-fw me-2"></i> Kanallar
+                        </button>
+                    </nav>
+
+                    
+                </div>
+            </div>
+
+            <main class="col-12 col-md-8 col-lg-9 main-content">
+                <div class="tab-content">
+                    <section id="dm-section" class="tab-pane fade show active">
+                        <h3><i class="fas fa-comment-dots me-2"></i>DM'ler</h3>
+                        <div class="input-group mb-2">
+                            <input type="text" id="search-user-input" class="form-control" placeholder="Kullanıcı ara...">
+                            <button id="search-user-button" class="btn btn-outline-secondary"><i class="fas fa-search"></i></button>
+                        </div>
+                        <div id="user-search-results" class="list-group list-group-flush"></div>
+                        <ul class="list-group chat-list mt-3">
+                            {% for dm_room_data in dm_rooms %}
+                                <li class="list-group-item">
+                                    <a href="{% url 'room' dm_room_data.room.slug %}" class="chat-link d-flex align-items-center">
+                                        <div class="chat-avatar bg-primary me-3">
+                                            <i class="fas fa-user-circle"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="fw-bold">{{ dm_room_data.display_name }}</div>
+                                            <small class="text-muted d-block text-truncate last-message-content-{{ dm_room_data.room.slug }}" style="max-width: 250px;">
+                                                {% if dm_room_data.last_message %}{{ dm_room_data.last_message.content }}{% else %}Henüz mesaj yok.{% endif %}
+                                            </small>
+                                        </div>
+                                        <small class="text-muted last-message-timestamp-{{ dm_room_data.room.slug }}">{% if dm_room_data.last_message %}{{ dm_room_data.last_message.timestamp|date:"H:i" }}{% endif %}</small>
+                                        {% if dm_room_data.unread_count > 0 %}
+                                            <span class="badge bg-danger rounded-pill ms-2 unread-count-{{ dm_room_data.room.slug }} {% if dm_room_data.unread_count == 0 %}d-none{% endif %}">
+                                                {{ dm_room_data.unread_count }}
+                                            </span>
+                                        {% endif %}
+                                    </a>
+                                </li>
+                            {% empty %}
+                                <li class="list-group-item empty-list-message"> Henüz hiç özel mesajınız yok. Sohbet başlatmak için kullanıcı aratabilirsiniz .</li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                    <section id="channels-section" class="tab-pane fade">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h3><i class="fas fa-users me-2"></i>Kanallar</h3>
+                            <button id="create-room-toggle" class="btn btn-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#create-room-form">
+                                <i class="fas fa-plus me-1"></i> Kanal Oluştur
+                            </button>
+                        </div>
+
+                        <div class="collapse" id="create-room-form">
+                            <form class="card card-body bg-dark mb-4">
+                                {% csrf_token %}
+                                <div class="mb-2">
+                                    <input type="text" id="room-name-input" class="form-control" placeholder="Yeni Kanal Adı" required>
+                                </div>
+                                <button type="submit" class="btn btn-success">Oluştur</button>
+                                <p id="create-room-message" class="text-danger mt-2"></p>
+                            </form>
+                        </div>
+                        
+                        <div class="input-group mb-3">
+                            <input type="text" id="search-room-input" class="form-control" placeholder="Kanal Adı ile Ara">
+                            <button id="search-room-button" class="btn btn-outline-secondary">Ara</button>
+                        </div>
+                        <div id="search-results" class="list-group list-group-flush mb-4"></div>
+
+                        <h4 class="h5 mt-4">Katıldığınız Kanallar</h4>
+                        <ul class="list-group chat-list mt-3">
+                            {% for channel in channel_rooms %}
+                                <li class="list-group-item">
+                                    <a href="{% url 'room' channel.room.slug %}" class="chat-link d-flex align-items-center">
+                                        <div class="chat-avatar bg-secondary me-3"><i class="fas fa-users"></i></div>
+                                        <div class="flex-grow-1">
+                                            <div class="fw-bold">{{ channel.display_name }}</div>
+                                            <small class="text-muted d-block text-truncate last-message-content-{{ channel.room.slug }}" style="max-width: 250px;">
+                                                {% if channel.last_message %}{{ channel.last_message.sender.username }}: {{ channel.last_message.content }}{% else %}Henüz mesaj yok.{% endif %}
+                                            </small>
+                                        </div>
+                                        <small class="text-muted last-message-timestamp-{{ channel.room.slug }}">{% if channel.last_message %}{{ channel.last_message.timestamp|date:"H:i" }}{% endif %}</small>
+                                        {% if channel.unread_count > 0 %}
+                                            <span class="badge bg-danger rounded-pill ms-2 unread-count-{{ channel.room.slug }} {% if channel.unread_count == 0 %}d-none{% endif %}">
+                                                {{ channel.unread_count }}
+                                            </span>
+                                        {% endif %}
+                                    </a>
+                                </li>
+                            {% empty %}
+                                <li class="list-group-item empty-list-message">Henüz katıldığınız bir kanal yok.</li>
+                            {% endfor %}
+                        </ul>
+
+                        <h4 class="h5 mt-4">Sahibi Olduğunuz Kanallar</h4>
+                        <ul class="list-group chat-list mt-3">
+                            {% for owned_channel in owned_channels %}
+                                <li class="list-group-item">
+                                    <a href="{% url 'room' owned_channel.room.slug %}" class="chat-link d-flex align-items-center">
+                                        <div class="chat-avatar bg-warning text-dark me-3"><i class="fas fa-crown"></i></div>
+                                        <div class="flex-grow-1">
+                                            <div class="fw-bold">{{ owned_channel.display_name }}</div>
+                                            <small class="text-muted d-block text-truncate last-message-content-{{ owned_channel.room.slug }}" style="max-width: 250px;">
+                                                {% if owned_channel.last_message %}{{ owned_channel.last_message.sender.username }}: {{ owned_channel.last_message.content }}{% else %}Henüz mesaj yok.{% endif %}
+                                            </small>
+                                        </div>
+                                        <small class="text-muted last-message-timestamp-{{ owned_channel.room.slug }}">{% if owned_channel.last_message %}{{ owned_channel.last_message.timestamp|date:"H:i" }}{% endif %}</small>
+                                        {% if owned_channel.unread_count > 0 %}
+                                            <span class="badge bg-danger rounded-pill ms-2 unread-count-{{ owned_channel.room.slug }} {% if owned_channel.unread_count == 0 %}d-none{% endif %}">
+                                                {{ owned_channel.unread_count }}
+                                            </span>
+                                        {% endif %}
+                                    </a>
+                                </li>
+                            {% empty %}
+                                <li class="list-group-item empty-list-message">Sahibi olduğunuz bir kanal yok.</li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/home.js' %}"></script>
+</body>
+</html>
